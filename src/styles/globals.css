@@ -1,0 +1,88 @@
+@import url('https://fonts.googleapis.com/css2?family=Poppins:ital,wght@0,100;0,200;0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,100;1,200;1,300;1,400;1,500;1,600;1,700;1,800;1,900&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Roboto:ital,wght@0,100..900;1,100..900&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Bungee+Tint&family=Edu+AU+VIC+WA+NT+Pre:wght@400..700&family=Poppins:ital,wght@0,100;0,200;0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,100;1,200;1,300;1,400;1,500;1,600;1,700;1,800;1,900&display=swap');
+@import 'tailwindcss';
+
+/* 🎨 Tokens personalizados via @theme */
+@theme {
+  --color-primary: #7159c1;
+  --color-second: #9340ff;
+  --font-roboto: 'Roboto', sans-serif;
+  --font-poppins: 'Poppins', sans-serif;
+  --font-bungee: 'Edu AU VIC WA NT Pre';
+}
+
+/* 🌍 Variáveis Globais */
+:root {
+  --background: #ffffff;
+  --foreground: #171717;
+
+  /* Tipografia personalizada */
+  --font-sans: var(--font-poppins);
+  --font-mono: var(--font-roboto);
+
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+}
+
+/* tailwind.css ou global.css */
+@layer utilities {
+  .hover\\:rotate-y-360:hover {
+    transform: rotateY(360deg);
+  }
+}
+
+/* 🌑 Dark Mode */
+@media (prefers-color-scheme: dark) {
+  :root {
+    --background: #0a0a0a;
+    --foreground: #ededed;
+  }
+}
+
+/* 🌐 Estilos base */
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-size: 1rem;
+  line-height: 1.5;
+}
+
+.floating-stars {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  z-index: -1;
+}
+
+.floating-stars {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  z-index: -1;
+}
+
+.star {
+  position: absolute;
+  width: 2px;
+  height: 2px;
+  background: white;
+  animation: float 12s linear infinite;
+}
+
+@keyframes float {
+  from {
+    transform: translateY(0) scale(1);
+    opacity: 1;
+  }
+  to {
+    transform: translateY(-120vh) scale(0.5);
+    opacity: 0;
+  }
+}
