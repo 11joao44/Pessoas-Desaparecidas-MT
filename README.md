@@ -1,69 +1,15 @@
-# React + TypeScript + Vite
+# Pessoas Desaparecidas MT - Frontend
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+## Desafios Encontrados e Decisões de Projeto
 
-Currently, two official plugins are available:
+- Swagger https://abitus-api.geia.vip/swagger-ui/index.html
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+### API de Pessoas Desaparecidas - Endpoint de Paginação
 
-## Expanding the ESLint configuration
+Durante o desenvolvimento, foi identificado que o endpoint `GET /v1/pessoas/aberto/filtro` apresenta um comportamento inesperado:
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
+1.  **Diagnóstico:** Independentemente do valor enviado no parâmetro de query `pagina` (ex: `pagina=1`, `pagina=2`, etc.), a API sempre retorna a primeira página de resultados (correspondente a `pagina=0`).
+2.  **Decisão de Implementação:** A estratégia adotada foi manter a implementação do frontend correta, utilizando `react-query` para gerenciar o estado da página e passando os parâmetros `pagina` e `porPagina` conforme a documentação e as melhores práticas para consumo de APIs paginadas.
+3.  **Contorno (Workaround):** Para garantir uma experiência de usuário funcional e não confusa, os botões de navegação da paginação foram desabilitados na interface, e um aviso foi adicionado. O filtro por nome, no entanto, permanece funcional.
 
-```js
-export default tseslint.config([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-
-      // Remove tseslint.configs.recommended and replace with this
-      ...tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      ...tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      ...tseslint.configs.stylisticTypeChecked,
-
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
-```
-
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
-
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
-
-export default tseslint.config([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
-```
+Essa abordagem foi escolhida para demonstrar a capacidade de consumir o endpoint da maneira correta e profissional, ao mesmo tempo em que se lida de forma transparente com as limitações de um serviço externo.

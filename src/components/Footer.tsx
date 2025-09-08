@@ -8,14 +8,13 @@ const Footer: React.FC = () => {
       <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-6">
         <div className="text-center">
           <p className="mb-2">
-            Desenvolvido por <strong>[Seu Nome Completo]</strong> para o processo seletivo da
-            Desenvolve MT.
+            Desenvolvido por <strong>João Pedro Inácio Ferreira</strong> para a Desenvolve MT.
           </p>
           <p className="text-sm text-gray-400 mb-2">
             Dados fornecidos pela Polícia Judiciária Civil de Mato Grosso.
           </p>
           <a
-            href="https://github.com/seu-usuario/seu-repositorio" // ATUALIZE ESTE LINK
+            href="https://github.com/11joao44/Pessoas-Desaparecidas-MT"
             target="_blank"
             rel="noopener noreferrer"
             className="text-blue-400 hover:text-blue-300 transition-colors duration-300 underline"
