@@ -1,8 +1,12 @@
 import React, { useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { useQuery, useMutation } from '@tanstack/react-query';
-import { buscarPessoaPorId, enviarNovaInformacao } from '../services/api';
-import type { NovaInformacaoPayload } from '../services/api';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import {
+  buscarPessoaPorId,
+  enviarNovaInformacao,
+  buscarInformacoesPorOcorrencia,
+} from '../services/api';
+import type { NovaInformacaoPayload, Informacao } from '../services/api';
 import placeholderImageF from '../assets/placeholder-f.svg';
 import placeholderImageM from '../assets/placeholder-m.svg';
 
@@ -19,18 +23,48 @@ const DetailItem: React.FC<{ label: string; value: string | number | null | unde
   );
 };
 
+const InformacaoCard: React.FC<{ info: Informacao }> = ({ info }) => (
+  <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
+    <p className="text-sm text-gray-500 mb-2">
+      Em{' '}
+      {new Date(info.data).toLocaleDateString('pt-BR', {
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric',
+      })}
+    </p>
+    <p className="text-gray-800">{info.informacao}</p>
+    {info.anexos && info.anexos.length > 0 && (
+      <div className="mt-4 grid grid-cols-2 sm:grid-cols-4 gap-2">
+        {info.anexos.map((anexoUrl, index) => (
+          <a key={index} href={anexoUrl} target="_blank" rel="noopener noreferrer">
+            <img
+              src={anexoUrl}
+              alt={`Anexo ${index + 1}`}
+              className="rounded-md object-cover h-24 w-full hover:opacity-80 transition-opacity"
+            />
+          </a>
+        ))}
+      </div>
+    )}
+  </div>
+);
+
 const InfoModal: React.FC<{
   isOpen: boolean;
   onClose: () => void;
   personName: string;
   ocoId: number | undefined;
 }> = ({ isOpen, onClose, personName, ocoId }) => {
+  const queryClient = useQueryClient();
   const [localizacao, setLocalizacao] = useState('');
   const [observacoes, setObservacoes] = useState('');
   const [fotos, setFotos] = useState<FileList | null>(null);
+
   const mutation = useMutation({
     mutationFn: enviarNovaInformacao,
     onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['informacoes', ocoId] });
       setTimeout(() => handleClose(), 3000);
     },
   });
@@ -38,7 +72,6 @@ const InfoModal: React.FC<{
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!ocoId) return;
-
     const payload: NovaInformacaoPayload = { ocoId, localizacao, observacoes, fotos };
     mutation.mutate(payload);
   };
@@ -54,21 +87,18 @@ const InfoModal: React.FC<{
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex justify-center items-center p-4 transition-opacity duration-300">
-      <div className="bg-white rounded-lg shadow-2xl w-full max-w-lg transform transition-all duration-300 scale-100">
+    <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex justify-center items-center p-4">
+      <div className="bg-white rounded-lg shadow-2xl w-full max-w-lg">
         <div className="p-6 border-b">
-          <h2 className="text-2xl font-bold text-gray-800">Registrar Informação</h2>
-          <p className="text-gray-600">Você tem informações sobre {personName}?</p>
+          <h2 className="text-2xl font-bold text-gray-800">Registar Informação</h2>
+          <p className="text-gray-600">Tem informações sobre {personName}?</p>
         </div>
-
         {mutation.isSuccess ? (
           <div className="p-8 text-center">
             <h3 className="text-xl font-semibold text-green-600">
               Informação Enviada com Sucesso!
             </h3>
-            <p className="text-gray-600 mt-2">
-              Obrigado pela sua colaboração. As autoridades foram notificadas.
-            </p>
+            <p className="text-gray-600 mt-2">Obrigado pela sua colaboração.</p>
           </div>
         ) : (
           <form onSubmit={handleSubmit}>
@@ -118,9 +148,7 @@ const InfoModal: React.FC<{
                 />
               </div>
               {mutation.isError && (
-                <p className="text-sm text-red-600">
-                  Falha no envio. Por favor, verifique os dados e tente novamente.
-                </p>
+                <p className="text-sm text-red-600">Falha no envio. Tente novamente.</p>
               )}
             </div>
             <div className="p-6 bg-gray-50 rounded-b-lg flex justify-end space-x-4">
@@ -134,9 +162,9 @@ const InfoModal: React.FC<{
               <button
                 type="submit"
                 disabled={mutation.isPending}
-                className="px-6 py-2 bg-blue-600 text-white font-semibold rounded-lg hover:bg-blue-700 disabled:bg-blue-300 disabled:cursor-not-allowed"
+                className="px-6 py-2 bg-blue-600 text-white font-semibold rounded-lg hover:bg-blue-700 disabled:bg-blue-300"
               >
-                {mutation.isPending ? 'Enviando...' : 'Enviar Informação'}
+                {mutation.isPending ? 'A Enviar...' : 'Enviar Informação'}
               </button>
             </div>
           </form>
@@ -150,10 +178,23 @@ const DetailsPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const [isModalOpen, setIsModalOpen] = useState(false);
 
-  const { data, isLoading, isError, error } = useQuery({
+  const {
+    data: person,
+    isLoading,
+    isError,
+    error,
+  } = useQuery({
     queryKey: ['personDetails', id],
     queryFn: () => buscarPessoaPorId(id!),
     enabled: !!id,
+  });
+
+  const ocoId = person?.ultimaOcorrencia?.ocoId;
+
+  const { data: informacoes, isLoading: isLoadingInformacoes } = useQuery({
+    queryKey: ['informacoes', ocoId],
+    queryFn: () => buscarInformacoesPorOcorrencia(ocoId!),
+    enabled: !!ocoId,
   });
 
   if (isLoading) {
@@ -163,7 +204,6 @@ const DetailsPage: React.FC = () => {
       </div>
     );
   }
-
   if (isError) {
     return (
       <div className="min-h-[calc(100vh-200px)] p-8 flex justify-center items-center">
@@ -186,7 +226,6 @@ const DetailsPage: React.FC = () => {
     );
   }
 
-  const person = data;
   const status = person?.ultimaOcorrencia?.dataLocalizacao ? 'Localizada' : 'Desaparecida';
   const statusColorClass = status === 'Desaparecida' ? 'bg-red-500' : 'bg-green-500';
   const placeholderImage = person?.sexo === 'FEMININO' ? placeholderImageF : placeholderImageM;
@@ -197,93 +236,116 @@ const DetailsPage: React.FC = () => {
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
         personName={person?.nome ?? ''}
-        ocoId={undefined}
+        ocoId={ocoId}
       />
       <div className="bg-gray-100 p-4 sm:p-6 lg:p-8 min-h-screen">
-        <div className="max-w-4xl mx-auto bg-white rounded-lg shadow-xl overflow-hidden">
-          <div className="p-4 sm:p-6">
-            <Link to="/" className="text-blue-600 hover:underline mb-6 inline-flex items-center">
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                className="h-5 w-5 mr-1"
-                viewBox="0 0 20 20"
-                fill="currentColor"
-              >
-                <path
-                  fillRule="evenodd"
-                  d="M12.707 5.293a1 1 0 010 1.414L9.414 10l3.293 3.293a1 1 0 01-1.414 1.414l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 0z"
-                  clipRule="evenodd"
-                />
-              </svg>
-              Voltar para a lista
-            </Link>
-            <div className="md:flex gap-8">
-              <div className="md:w-1/3 mb-6 md:mb-0">
-                <img
-                  src={person?.urlFoto ?? placeholderImage}
-                  alt={person?.nome ?? 'Foto'}
-                  className="rounded-lg w-full shadow-md aspect-square object-cover"
-                />
-              </div>
-              <div className="md:w-2/3">
-                <span
-                  className={`inline-block px-4 py-1 text-white rounded-full text-sm font-bold mb-4 ${statusColorClass}`}
+        <div className="max-w-4xl mx-auto space-y-8">
+          <div className="bg-white rounded-lg shadow-xl overflow-hidden">
+            <div className="p-4 sm:p-6">
+              <Link to="/" className="text-blue-600 hover:underline mb-6 inline-flex items-center">
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  className="h-5 w-5 mr-1"
+                  viewBox="0 0 20 20"
+                  fill="currentColor"
                 >
-                  {status}
-                </span>
-                <h1 className="text-3xl font-bold text-gray-900 mb-4">{person?.nome}</h1>
-                <div className="border-t divide-y divide-gray-200">
-                  <DetailItem label="Idade" value={person?.idade} />
-                  <DetailItem label="Sexo" value={person?.sexo} />
-                  <DetailItem
-                    label="Data do Desaparecimento"
-                    value={
-                      person?.ultimaOcorrencia?.dtDesaparecimento
-                        ? new Date(person.ultimaOcorrencia.dtDesaparecimento).toLocaleDateString(
-                            'pt-BR',
-                          )
-                        : 'N/A'
-                    }
+                  <path
+                    fillRule="evenodd"
+                    d="M12.707 5.293a1 1 0 010 1.414L9.414 10l3.293 3.293a1 1 0 01-1.414 1.414l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 0z"
+                    clipRule="evenodd"
                   />
-                  <DetailItem
-                    label="Local"
-                    value={person?.ultimaOcorrencia?.localDesaparecimentoConcat}
-                  />
-                  <DetailItem
-                    label="Vestimentas"
-                    value={
-                      person?.ultimaOcorrencia?.ocorrenciaEntrevDesapDTO?.vestimentasDesaparecido
-                    }
-                  />
-                  <DetailItem
-                    label="Outras Informações"
-                    value={person?.ultimaOcorrencia?.ocorrenciaEntrevDesapDTO?.informacao}
+                </svg>
+                Voltar para a lista
+              </Link>
+              <div className="md:flex gap-8">
+                <div className="md:w-1/3 mb-6 md:mb-0">
+                  <img
+                    src={person?.urlFoto ?? placeholderImage}
+                    alt={person?.nome ?? 'Foto'}
+                    className="rounded-lg w-full shadow-md aspect-square object-cover"
                   />
                 </div>
-                <div className="mt-8">
-                  <button
-                    type="button"
-                    onClick={() => setIsModalOpen(true)}
-                    className="w-full sm:w-auto inline-flex items-center justify-center px-6 py-3 bg-blue-600 text-white text-lg font-bold rounded-lg shadow-lg hover:bg-blue-700 transition-colors transform hover:scale-105"
+                <div className="md:w-2/3">
+                  <span
+                    className={`inline-block px-4 py-1 text-white rounded-full text-sm font-bold mb-4 ${statusColorClass}`}
                   >
-                    <svg
-                      xmlns="http://www.w3.org/2000/svg"
-                      className="h-6 w-6 mr-2"
-                      fill="none"
-                      viewBox="0 0 24 24"
-                      stroke="currentColor"
-                      strokeWidth={2}
+                    {status}
+                  </span>
+                  <h1 className="text-3xl font-bold text-gray-900 mb-4">{person?.nome}</h1>
+                  <div className="border-t divide-y divide-gray-200">
+                    <DetailItem label="Idade" value={person?.idade} />
+                    <DetailItem label="Sexo" value={person?.sexo} />
+                    <DetailItem
+                      label="Data do Desaparecimento"
+                      value={
+                        person?.ultimaOcorrencia?.dtDesaparecimento
+                          ? new Date(person.ultimaOcorrencia.dtDesaparecimento).toLocaleDateString(
+                              'pt-BR',
+                            )
+                          : 'N/A'
+                      }
+                    />
+                    <DetailItem
+                      label="Local"
+                      value={person?.ultimaOcorrencia?.localDesaparecimentoConcat}
+                    />
+                    <DetailItem
+                      label="Vestimentas"
+                      value={
+                        person?.ultimaOcorrencia?.ocorrenciaEntrevDesapDTO?.vestimentasDesaparecido
+                      }
+                    />
+                    <DetailItem
+                      label="Outras Informações"
+                      value={person?.ultimaOcorrencia?.ocorrenciaEntrevDesapDTO?.informacao}
+                    />
+                  </div>
+                  <div className="mt-8">
+                    <button
+                      type="button"
+                      onClick={() => setIsModalOpen(true)}
+                      className="w-full sm:w-auto inline-flex items-center justify-center px-6 py-3 bg-blue-600 text-white text-lg font-bold rounded-lg shadow-lg hover:bg-blue-700 transition-colors transform hover:scale-105"
                     >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        d="M12 9v3m0 0v3m0-3h3m-3 0H9m12 0a9 9 0 11-18 0 9 9 0 0118 0z"
-                      />
-                    </svg>
-                    Registrar Nova Informação
-                  </button>
+                      <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        className="h-6 w-6 mr-2"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                        stroke="currentColor"
+                        strokeWidth={2}
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          d="M12 9v3m0 0v3m0-3h3m-3 0H9m12 0a9 9 0 11-18 0 9 9 0 0118 0z"
+                        />
+                      </svg>
+                      Registar Nova Informação
+                    </button>
+                  </div>
                 </div>
               </div>
+            </div>
+          </div>
+
+          <div className="bg-white rounded-lg shadow-xl overflow-hidden">
+            <div className="p-4 sm:p-6">
+              <h2 className="text-2xl font-bold text-gray-800 mb-4">
+                Linha do Tempo de Informações
+              </h2>
+              {isLoadingInformacoes ? (
+                <p className="text-gray-500">A procurar informações...</p>
+              ) : informacoes && informacoes.length > 0 ? (
+                <div className="space-y-4">
+                  {informacoes.map((info) => (
+                    <InformacaoCard key={info.id} info={info} />
+                  ))}
+                </div>
+              ) : (
+                <p className="text-gray-500">
+                  Nenhuma informação adicional foi registada para este caso ainda.
+                </p>
+              )}
             </div>
           </div>
         </div>

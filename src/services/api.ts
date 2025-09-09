@@ -13,8 +13,15 @@ interface ApiPersonSummary {
   } | null;
 }
 
+interface PaginatedApiResponse {
+  content: ApiPersonSummary[];
+  totalPages: number;
+  totalElements: number;
+}
+
 export interface PersonDetails extends ApiPersonSummary {
   ultimaOcorrencia: {
+    ocoId: number; // ID da ocorrência, essencial para outras chamadas
     dtDesaparecimento: string | null;
     dataLocalizacao: string | null;
     localDesaparecimentoConcat: string | null;
@@ -25,22 +32,17 @@ export interface PersonDetails extends ApiPersonSummary {
   } | null;
 }
 
-interface PaginatedApiResponse {
-  content: ApiPersonSummary[];
-  totalPages: number;
-  totalElements: number;
-}
-
 export interface Statistics {
   quantPessoasDesaparecidas: number;
   quantPessoasEncontradas: number;
 }
 
-export interface NovaInformacaoPayload {
+export interface Informacao {
+  id: number;
   ocoId: number;
-  localizacao: string;
-  observacoes: string;
-  fotos: FileList | null;
+  informacao: string;
+  data: string;
+  anexos: string[];
 }
 
 export type Sexo = 'MASCULINO' | 'FEMININO' | '';
@@ -69,6 +71,14 @@ export interface FiltrosBusca {
   status?: Status;
 }
 
+// Dados para o formulário de envio de nova informação
+export interface NovaInformacaoPayload {
+  ocoId: number;
+  localizacao: string;
+  observacoes: string;
+  fotos: FileList | null;
+}
+
 export const api = axios.create({
   baseURL: 'https://abitus-api.geia.vip/v1',
 });
@@ -85,7 +95,6 @@ export const buscarPessoasPorFiltro = async (
       sexo = '',
       status = '',
     } = filtros;
-
     const response = await api.get<PaginatedApiResponse>('/pessoas/aberto/filtro', {
       params: {
         pagina: page - 1,
@@ -140,7 +149,6 @@ export const buscarPorEstatisticas = async (): Promise<Statistics> => {
 
 export const enviarNovaInformacao = async (payload: NovaInformacaoPayload) => {
   const formData = new FormData();
-
   formData.append('ocorrenciaId', String(payload.ocoId));
   formData.append('descricaoLocal', payload.localizacao);
   formData.append('informacao', payload.observacoes);
@@ -151,12 +159,25 @@ export const enviarNovaInformacao = async (payload: NovaInformacaoPayload) => {
     });
   }
 
-  // O endpoint é o POST /v1/ocorrencias/informacoes-desaparecido
-  const response = await api.post('/ocorrencias/informacoes-desaparecido', formData, {
-    headers: {
-      'Content-Type': 'multipart/form-data',
-    },
-  });
+  try {
+    const response = await api.post('/ocorrencias/informacoes-desaparecido', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+    return response.data;
+  } catch (error) {
+    console.error('Erro ao enviar nova informação:', error);
+    throw new Error('Não foi possível enviar a informação.');
+  }
+};
 
-  return response.data;
+export const buscarInformacoesPorOcorrencia = async (ocoId: number): Promise<Informacao[]> => {
+  try {
+    const response = await api.get<Informacao[]>(`/ocorrencias/informacoes-desaparecido`, {
+      params: { ocorrenciaId: ocoId },
+    });
+    return response.data;
+  } catch (error) {
+    console.error(`Erro ao buscar informações para a ocorrência ${ocoId}:`, error);
+    throw new Error('Não foi possível carregar o histórico de informações.');
+  }
 };
